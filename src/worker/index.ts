@@ -5,11 +5,16 @@ import data from './routes/data';
 import login from './routes/login';
 import categories from './routes/categories';
 import links from './routes/links';
+import favicon from './routes/favicon';
 
 const app = new Hono<{ Bindings: Env }>();
 
-// 所有 /api 请求前自动建表（幂等）；空库时写入示例数据
+// 图标代理不依赖 D1；其它 API 自动建表
 app.use('/api/*', async (c, next) => {
+  if (c.req.path.startsWith('/api/favicon')) {
+    await next();
+    return;
+  }
   try {
     await ensureSchema(c.env);
   } catch (err) {
@@ -25,6 +30,7 @@ app.use('/api/*', async (c, next) => {
   await next();
 });
 
+app.route('/api/favicon', favicon);
 app.route('/api/data', data);
 app.route('/api/login', login);
 app.route('/api/categories', categories);

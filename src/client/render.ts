@@ -17,8 +17,11 @@ export function domainOf(u: string): string {
   }
 }
 
+/** 走本站 Worker 代理：首次访问时抓取并边缘缓存，失败由 UI 字母兜底 */
 export function faviconUrl(u: string): string {
-  return `https://www.google.com/s2/favicons?sz=64&domain=${domainOf(u)}`;
+  const raw = u.trim();
+  const full = raw.startsWith('http') ? raw : `https://${raw}`;
+  return `/api/favicon?url=${encodeURIComponent(full)}`;
 }
 
 export type RenderHandlers = {
@@ -115,19 +118,30 @@ export function renderSections(data: Section[], handlers: RenderHandlers) {
       favWrap.className = 'favicon-wrap';
 
       const img = document.createElement('img');
-      img.src = faviconUrl(item.u);
       img.alt = '';
+      img.loading = 'lazy';
+      img.decoding = 'async';
+      img.referrerPolicy = 'no-referrer';
 
       const fallback = document.createElement('div');
       fallback.className = 'favicon-fallback';
       fallback.style.display = 'none';
       fallback.textContent = item.t.slice(0, 1) || '?';
 
+      // 先显示首字母，图标加载成功后再替换（避免空白闪烁）
+      fallback.style.display = 'flex';
+      img.style.display = 'none';
+
+      img.addEventListener('load', () => {
+        img.style.display = '';
+        fallback.style.display = 'none';
+      });
       img.addEventListener('error', () => {
         img.style.display = 'none';
         fallback.style.display = 'flex';
       });
 
+      img.src = faviconUrl(item.u);
       favWrap.append(img, fallback);
       card.appendChild(favWrap);
 
