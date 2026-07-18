@@ -2,14 +2,18 @@ name = "personal-nav"
 main = "src/worker/index.ts"
 compatibility_date = "2024-09-23"
 
+# D1：请在 Cloudflare 控制台创建数据库后，将 Database ID 填到 database_id，
+# 再提交到 GitHub。控制台「连接 Git 仓库」部署时会读取本文件。
+# binding 名称必须是 DB（与 Worker 代码 env.DB 一致）
 [[d1_databases]]
 binding = "DB"
 database_name = "personal-nav-db"
-# 部署前执行 wrangler d1 create personal-nav-db，将返回的 database_id 填到下面
-database_id = "在这里填入你创建数据库后拿到的 database_id"
+database_id = "在这里填入 Cloudflare D1 控制台里的 Database ID"
 
+# 前端由 Vite 构建到 dist/client，作为 Worker Assets 托管
 [assets]
 directory = "./dist/client"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
+# 保证 /api/* 优先走 Worker（Hono），而不是被静态资源吃掉
 run_worker_first = ["/api/*"]
