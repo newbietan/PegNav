@@ -176,3 +176,37 @@
     border-color: #A83232;
     box-shadow: 0 0 0 3px rgba(168,50,50,.12);
   }
+  .modal-wide{ width: 440px; }
+  .radio-row{ display:flex; flex-direction:column; gap:8px; }
+  .radio-label{
+    display:flex; align-items:flex-start; gap:8px;
+    font-size:13px; color:var(--ink); line-height:1.4; cursor:pointer;
+  }
+  .radio-label input{ margin-top:3px; flex-shrink:0; }
+  .import-preview{
+    margin: 4px 0 12px;
+    background: var(--card-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    max-height: 200px;
+    overflow: auto;
+  }
+  .import-preview-title{
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+  }
+  .import-preview pre{
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--ink);
+    line-height: 1.45;
+  }
+  #importFile{
+    padding: 8px;
+    background: #FBF8F0;
+  }

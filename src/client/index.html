@@ -13,6 +13,7 @@
       <div class="brand-sub">Personal / Nav Board</div>
     </div>
     <div class="header-actions">
+      <button class="add-cat-btn" id="importBtn" style="display:none" type="button">导入书签</button>
       <button class="add-cat-btn" id="addCatBtn" style="display:none" type="button">+ 新建分类</button>
       <button class="auth-btn" id="loginBtn" type="button">管理员登录</button>
       <button class="auth-btn" id="logoutBtn" style="display:none" type="button">退出管理</button>
@@ -67,6 +68,42 @@
         <button class="btn primary" id="loginSubmit" type="submit">登录</button>
       </div>
     </form>
+  </div>
+</div>
+
+<div class="mask" id="importMask">
+  <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="importTitle">
+    <h3 id="importTitle">导入书签</h3>
+    <p class="modal-desc">
+      支持 Chrome / Edge / Firefox 导出的 HTML 书签文件（如 favorites_*.html）。
+      文件夹会映射为分类，系统根目录名（收藏夹栏等）会自动跳过。
+    </p>
+    <div class="field">
+      <label for="importFile">选择文件</label>
+      <input id="importFile" type="file" accept=".html,.htm,text/html">
+    </div>
+    <div class="field">
+      <label>导入模式</label>
+      <div class="radio-row">
+        <label class="radio-label">
+          <input type="radio" name="importMode" value="merge" checked>
+          合并（同名分类追加，已存在的网址跳过）
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="importMode" value="replace">
+          替换（清空现有全部分类与链接后再导入）
+        </label>
+      </div>
+    </div>
+    <div class="import-preview" id="importPreview" hidden>
+      <div class="import-preview-title">预览</div>
+      <pre id="importPreviewText"></pre>
+    </div>
+    <p class="field-error" id="importError" hidden></p>
+    <div class="modal-actions">
+      <button class="btn ghost" id="importCancel" type="button">取消</button>
+      <button class="btn primary" id="importSubmit" type="button" disabled>开始导入</button>
+    </div>
   </div>
 </div>
 

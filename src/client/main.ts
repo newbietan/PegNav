@@ -9,11 +9,17 @@ import {
 } from './auth';
 import { doSearch, setEngine, type Engine } from './search';
 import { fillCatOptions, renderSections } from './render';
+import {
+  parseBookmarkHtml,
+  summarizeImport,
+  type ParseResult,
+} from './bookmark-import';
 
 let data: Section[] = [];
 let editing: { itemId: number } | null = null;
 let isAdmin = false;
 let adminPw = loadStoredPassword();
+let pendingImport: ParseResult | null = null;
 
 function notifyError(err: unknown) {
   const msg = err instanceof Error ? err.message : '操作失败';
@@ -212,6 +218,129 @@ function closeModal() {
   document.getElementById('mask')?.classList.remove('show');
 }
 
+function setImportError(message: string) {
+  const err = document.getElementById('importError');
+  if (!err) return;
+  if (!message) {
+    err.hidden = true;
+    err.textContent = '';
+    return;
+  }
+  err.hidden = false;
+  err.textContent = message;
+}
+
+function resetImportModal() {
+  pendingImport = null;
+  const file = document.getElementById('importFile') as HTMLInputElement | null;
+  const preview = document.getElementById('importPreview');
+  const previewText = document.getElementById('importPreviewText');
+  const submit = document.getElementById('importSubmit') as HTMLButtonElement | null;
+  if (file) file.value = '';
+  if (preview) preview.hidden = true;
+  if (previewText) previewText.textContent = '';
+  if (submit) {
+    submit.disabled = true;
+    submit.textContent = '开始导入';
+  }
+  setImportError('');
+  const merge = document.querySelector(
+    'input[name="importMode"][value="merge"]',
+  ) as HTMLInputElement | null;
+  if (merge) merge.checked = true;
+}
+
+function openImportModal() {
+  if (!isAdmin) return;
+  resetImportModal();
+  document.getElementById('importMask')?.classList.add('show');
+}
+
+function closeImportModal() {
+  document.getElementById('importMask')?.classList.remove('show');
+  resetImportModal();
+}
+
+async function onImportFileChange(file: File | undefined) {
+  setImportError('');
+  pendingImport = null;
+  const preview = document.getElementById('importPreview');
+  const previewText = document.getElementById('importPreviewText');
+  const submit = document.getElementById('importSubmit') as HTMLButtonElement | null;
+  if (submit) submit.disabled = true;
+  if (preview) preview.hidden = true;
+  if (!file) return;
+
+  if (file.size > 5 * 1024 * 1024) {
+    setImportError('文件过大（请小于 5MB）');
+    return;
+  }
+
+  try {
+    const text = await file.text();
+    const result = parseBookmarkHtml(text);
+    if (!result.totalLinks) {
+      setImportError('文件中没有可导入的链接');
+      return;
+    }
+    pendingImport = result;
+    if (previewText) previewText.textContent = summarizeImport(result);
+    if (preview) preview.hidden = false;
+    if (submit) submit.disabled = false;
+  } catch (err) {
+    setImportError(err instanceof Error ? err.message : '解析书签文件失败');
+  }
+}
+
+async function submitImport() {
+  if (!isAdmin || !pendingImport) return;
+  const modeInput = document.querySelector(
+    'input[name="importMode"]:checked',
+  ) as HTMLInputElement | null;
+  const mode = modeInput?.value === 'replace' ? 'replace' : 'merge';
+
+  if (mode === 'replace') {
+    if (
+      !confirm(
+        '替换模式会删除当前全部导航数据，再写入导入内容。确定继续吗？',
+      )
+    ) {
+      return;
+    }
+  }
+
+  const submit = document.getElementById('importSubmit') as HTMLButtonElement | null;
+  if (submit) {
+    submit.disabled = true;
+    submit.textContent = '导入中…';
+  }
+  setImportError('');
+
+  try {
+    const res = await api.importBookmarks(
+      {
+        mode,
+        categories: pendingImport.categories.map((c) => ({
+          name: c.name,
+          links: c.links,
+        })),
+      },
+      adminPw,
+    );
+    closeImportModal();
+    await loadData();
+    alert(
+      `导入完成\n新增分类 ${res.categories_created} 个\n新增链接 ${res.links_created} 个\n跳过重复 ${res.links_skipped} 个`,
+    );
+  } catch (err) {
+    setImportError(err instanceof Error ? err.message : '导入失败');
+    if (submit) {
+      submit.disabled = false;
+      submit.textContent = '开始导入';
+    }
+  }
+}
+
 async function saveCard() {
   const fTitle = document.getElementById('fTitle') as HTMLInputElement;
   const fUrl = document.getElementById('fUrl') as HTMLInputElement;
@@ -241,6 +370,7 @@ function bindUi() {
   document.getElementById('addCatBtn')?.addEventListener('click', () => {
     void addCategory();
   });
+  document.getElementById('importBtn')?.addEventListener('click', openImportModal);
   document.getElementById('searchGo')?.addEventListener('click', doSearch);
   document.getElementById('searchInput')?.addEventListener('keydown', (e) => {
     if ((e as KeyboardEvent).key === 'Enter') doSearch();
@@ -260,8 +390,25 @@ function bindUi() {
   document.getElementById('mask')?.addEventListener('click', (e) => {
     if (e.target === e.currentTarget) closeModal();
   });
+
+  document.getElementById('importCancel')?.addEventListener('click', closeImportModal);
+  document.getElementById('importMask')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeImportModal();
+  });
+  document.getElementById('importFile')?.addEventListener('change', (e) => {
+    const input = e.target as HTMLInputElement;
+    void onImportFileChange(input.files?.[0]);
+  });
+  document.getElementById('importSubmit')?.addEventListener('click', () => {
+    void submitImport();
+  });
+
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
+    if (document.getElementById('importMask')?.classList.contains('show')) {
+      closeImportModal();
+      return;
+    }
     if (document.getElementById('loginMask')?.classList.contains('show')) {
       closeLoginModal();
       return;

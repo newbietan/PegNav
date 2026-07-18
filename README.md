@@ -4,6 +4,7 @@
 
 - 公开只读浏览分类与链接卡片
 - 管理员密码登录后可增删改分类/链接
+- 支持一键导入 Chrome / Edge / Firefox 导出的 HTML 书签
 - 搜索栏可跳转百度 / Bing / Google
 - 钉板（pegboard）风格前端
 
@@ -118,6 +119,7 @@ push 到 `main` → Cloudflare 自动构建部署。
 | POST | `/api/links` | Bearer | 新建链接 |
 | PUT | `/api/links/:id` | Bearer | 编辑链接 |
 | DELETE | `/api/links/:id` | Bearer | 删除链接 |
+| POST | `/api/import` | Bearer | 批量导入书签（merge / replace） |
 
 鉴权：`Authorization: Bearer <ADMIN_PASSWORD>`
 

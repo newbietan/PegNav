@@ -6,6 +6,7 @@ import login from './routes/login';
 import categories from './routes/categories';
 import links from './routes/links';
 import favicon from './routes/favicon';
+import importRoute from './routes/import';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -35,6 +36,7 @@ app.route('/api/data', data);
 app.route('/api/login', login);
 app.route('/api/categories', categories);
 app.route('/api/links', links);
+app.route('/api/import', importRoute);
 
 app.notFound(async (c) => {
   if (c.req.path.startsWith('/api/')) {

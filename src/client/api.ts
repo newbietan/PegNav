@@ -96,3 +96,24 @@ export function deleteLink(id: number, password: string) {
     password,
   );
 }
+
+export type ImportPayload = {
+  mode: 'merge' | 'replace';
+  categories: { name: string; links: { title: string; url: string }[] }[];
+};
+
+export type ImportResult = {
+  ok: boolean;
+  mode: 'merge' | 'replace';
+  categories_created: number;
+  links_created: number;
+  links_skipped: number;
+};
+
+export function importBookmarks(payload: ImportPayload, password: string) {
+  return request<ImportResult>(
+    '/api/import',
+    { method: 'POST', body: JSON.stringify(payload) },
+    password,
+  );
+}
