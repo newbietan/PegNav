@@ -30,8 +30,10 @@
       <button data-engine="bing" type="button">Bing</button>
       <button data-engine="google" type="button">Google</button>
     </div>
-    <input id="searchInput" placeholder="输入关键词搜索…">
-    <button class="go" id="searchGo" type="button">→</button>
+    <div class="search-field">
+      <input id="searchInput" placeholder="输入关键词搜索…" enterkeyhint="search" autocomplete="off">
+      <button class="go" id="searchGo" type="button" aria-label="搜索">→</button>
+    </div>
   </div>
 
   <div id="sections"></div>
