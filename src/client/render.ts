@@ -32,46 +32,59 @@ export function workerFaviconUrl(u: string): string {
 
 /**
  * 依次尝试：Google s2 → Worker 代理 → 首字母。
- * 任一 load 成功即显示该图。
+ * 用独立 Image 探测，避免 display:none / lazy 导致永不加载。
  */
 export function bindFavicon(img: HTMLImageElement, fallback: HTMLElement, url: string) {
   const sources = [googleFaviconUrl(url), workerFaviconUrl(url)];
   let index = 0;
+  let done = false;
 
+  // 加载中先显示字母，成功再换图（避免空白）
   fallback.style.display = 'flex';
   img.style.display = 'none';
+  img.alt = '';
+  img.decoding = 'async';
+  img.referrerPolicy = 'no-referrer';
 
   const showLetter = () => {
+    if (done) return;
+    done = true;
     img.style.display = 'none';
     img.removeAttribute('src');
     fallback.style.display = 'flex';
   };
 
-  const showImage = () => {
+  const showImage = (src: string) => {
+    if (done) return;
+    done = true;
+    img.src = src;
     img.style.display = '';
     fallback.style.display = 'none';
   };
 
   const tryNext = () => {
+    if (done) return;
     if (index >= sources.length) {
       showLetter();
       return;
     }
     const src = sources[index++];
-    img.src = src;
+    const probe = new Image();
+    probe.referrerPolicy = 'no-referrer';
+    probe.onload = () => {
+      if (done) return;
+      if (probe.naturalWidth > 0 && probe.naturalHeight > 0) {
+        showImage(src);
+      } else {
+        tryNext();
+      }
+    };
+    probe.onerror = () => {
+      if (done) return;
+      tryNext();
+    };
+    probe.src = src;
   };
-
-  img.addEventListener('load', () => {
-    // 极小透明/损坏图：继续下一源
-    if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-      showImage();
-      return;
-    }
-    tryNext();
-  });
-  img.addEventListener('error', () => {
-    tryNext();
-  });
 
   tryNext();
 }
@@ -171,9 +184,6 @@ export function renderSections(data: Section[], handlers: RenderHandlers) {
 
       const img = document.createElement('img');
       img.alt = '';
-      img.loading = 'lazy';
-      img.decoding = 'async';
-      img.referrerPolicy = 'no-referrer';
 
       const fallback = document.createElement('div');
       fallback.className = 'favicon-fallback';

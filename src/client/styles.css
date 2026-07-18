@@ -81,17 +81,29 @@
   }
   .del-cat:hover{ background:#A83232; color:#fff; }
 
-  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:20px 16px;}
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+    gap:20px 16px;
+    overflow:visible;
+  }
 
   .tag-card{
     position:relative; background:var(--card); border-radius:8px;
     padding:18px 14px 14px; box-shadow: 0 6px 14px rgba(43,42,40,.10), 0 1px 0 rgba(255,255,255,.6) inset;
-    cursor:pointer; transition: transform .18s ease; border:1px solid var(--line);
+    cursor:pointer; transition: transform .18s ease, box-shadow .18s ease; border:1px solid var(--line);
     display:flex; flex-direction:column; align-items:center; text-align:center; gap:8px;
+    /* transform 会形成层叠上下文，悬停时抬高层级，避免 tooltip 被下一行盖住 */
+    z-index:1;
+    overflow:visible;
   }
   .tag-card:nth-child(odd){ transform: rotate(-1.1deg); }
   .tag-card:nth-child(even){ transform: rotate(1deg); }
-  .tag-card:hover{ transform: translateY(-4px) rotate(0deg); border-color:var(--teal); }
+  .tag-card:hover{
+    transform: translateY(-4px) rotate(0deg);
+    border-color:var(--teal);
+    z-index:30;
+  }
 
   .peg-hole{
     position:absolute; top:-9px; left:50%; transform:translateX(-50%);
@@ -104,25 +116,38 @@
     display:flex;align-items:center;justify-content:center;
     box-shadow: 0 2px 6px rgba(43,42,40,.08);
     overflow:hidden;
+    position:relative;
   }
-  .favicon-wrap img{width:26px;height:26px;object-fit:contain;}
+  .favicon-wrap img{
+    width:26px;height:26px;object-fit:contain;
+    /* 占位，避免 absolute 时尺寸塌陷 */
+    position:absolute;
+  }
   .favicon-fallback{
     width:100%;height:100%;display:flex;align-items:center;justify-content:center;
     background:linear-gradient(135deg,var(--teal),var(--sienna));
     color:#fff;font-size:16px;font-weight:700;font-family:'Zilla Slab',serif;
   }
   .tag-card .title{font-family:'Zilla Slab',serif;font-weight:600;font-size:14.5px;margin:0;color:var(--ink);line-height:1.25;}
+  /* 展示在卡片上方，避免被下一行标签挡住 */
   .url-tooltip{
-    position:absolute; bottom:-8px; left:50%; transform:translateX(-50%) translateY(100%);
+    position:absolute; top:0; left:50%; transform:translateX(-50%) translateY(calc(-100% - 10px));
     background:var(--ink); color:#F7F4EC; font-family:'JetBrains Mono',monospace; font-size:10.5px;
     padding:5px 9px; border-radius:6px; white-space:nowrap; opacity:0; pointer-events:none;
-    transition:.15s ease; z-index:6;
+    transition:opacity .15s ease, transform .15s ease;
+    z-index:40;
+    max-width:min(280px, 80vw);
+    overflow:hidden;
+    text-overflow:ellipsis;
   }
   .url-tooltip::before{
-    content:''; position:absolute; top:-4px; left:50%; transform:translateX(-50%);
-    border:4px solid transparent; border-bottom-color:var(--ink);
+    content:''; position:absolute; bottom:-4px; left:50%; transform:translateX(-50%);
+    border:4px solid transparent; border-top-color:var(--ink);
   }
-  .tag-card:hover .url-tooltip{ opacity:1; transform:translateX(-50%) translateY(calc(100% + 6px)); }
+  .tag-card:hover .url-tooltip{
+    opacity:1;
+    transform:translateX(-50%) translateY(calc(-100% - 14px));
+  }
 
   .tag-card .actions{position:absolute; top:8px; right:8px; display:flex; gap:5px; opacity:0; transition:.15s;}
   .tag-card:hover .actions{opacity:1;}
