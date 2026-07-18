@@ -17,11 +17,63 @@ export function domainOf(u: string): string {
   }
 }
 
-/** 走本站 Worker 代理：首次访问时抓取并边缘缓存，失败由 UI 字母兜底 */
-export function faviconUrl(u: string): string {
+/** Google 公共图标服务（优先） */
+export function googleFaviconUrl(u: string): string {
+  const host = domainOf(u);
+  return `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(host)}`;
+}
+
+/** 本站 Worker 代理（失败兜底，支持 data: URI 等） */
+export function workerFaviconUrl(u: string): string {
   const raw = u.trim();
   const full = raw.startsWith('http') ? raw : `https://${raw}`;
   return `/api/favicon?url=${encodeURIComponent(full)}`;
+}
+
+/**
+ * 依次尝试：Google s2 → Worker 代理 → 首字母。
+ * 任一 load 成功即显示该图。
+ */
+export function bindFavicon(img: HTMLImageElement, fallback: HTMLElement, url: string) {
+  const sources = [googleFaviconUrl(url), workerFaviconUrl(url)];
+  let index = 0;
+
+  fallback.style.display = 'flex';
+  img.style.display = 'none';
+
+  const showLetter = () => {
+    img.style.display = 'none';
+    img.removeAttribute('src');
+    fallback.style.display = 'flex';
+  };
+
+  const showImage = () => {
+    img.style.display = '';
+    fallback.style.display = 'none';
+  };
+
+  const tryNext = () => {
+    if (index >= sources.length) {
+      showLetter();
+      return;
+    }
+    const src = sources[index++];
+    img.src = src;
+  };
+
+  img.addEventListener('load', () => {
+    // 极小透明/损坏图：继续下一源
+    if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+      showImage();
+      return;
+    }
+    tryNext();
+  });
+  img.addEventListener('error', () => {
+    tryNext();
+  });
+
+  tryNext();
 }
 
 export type RenderHandlers = {
@@ -125,23 +177,9 @@ export function renderSections(data: Section[], handlers: RenderHandlers) {
 
       const fallback = document.createElement('div');
       fallback.className = 'favicon-fallback';
-      fallback.style.display = 'none';
       fallback.textContent = item.t.slice(0, 1) || '?';
 
-      // 先显示首字母，图标加载成功后再替换（避免空白闪烁）
-      fallback.style.display = 'flex';
-      img.style.display = 'none';
-
-      img.addEventListener('load', () => {
-        img.style.display = '';
-        fallback.style.display = 'none';
-      });
-      img.addEventListener('error', () => {
-        img.style.display = 'none';
-        fallback.style.display = 'flex';
-      });
-
-      img.src = faviconUrl(item.u);
+      bindFavicon(img, fallback, item.u);
       favWrap.append(img, fallback);
       card.appendChild(favWrap);
 

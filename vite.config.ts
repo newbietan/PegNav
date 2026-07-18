@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 
 export default defineConfig({
   root: resolve(__dirname, 'src/client'),
-  publicDir: false,
+  publicDir: resolve(__dirname, 'src/client/public'),
   build: {
     outDir: resolve(__dirname, 'dist/client'),
     emptyOutDir: true,
