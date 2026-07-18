@@ -1,3 +1,0 @@
-# 本项目推荐仅在 Cloudflare 控制台配置 Secret：ADMIN_PASSWORD
-# 一般无需本文件。若你自行用 wrangler 做实验，可复制为 .dev.vars（勿提交）。
-ADMIN_PASSWORD=changeme

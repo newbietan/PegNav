@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./logo.svg" alt="PegNav" width="480">
+  <img src="./assets/logo.svg" alt="PegNav" width="480">
   <p>一个基于 Cloudflare Workers 的 Serverless 个人导航页：分类卡片、书签导入导出、站内筛选与管理员后台。</p>
   <p><b>极致轻量 · 一键部署 · 钉板工坊 UI</b></p>
   <p>
@@ -30,7 +30,7 @@
 > 暖色钉板（pegboard）风格：分类分区、网站卡片、搜索栏与管理弹窗。公开只读；登录后可增删改、拖拽排序、导入导出。
 
 <div align="center">
-  <img src="./demo.png" alt="PegNav 演示截图" width="900" />
+  <img src="./assets/demo.png" alt="PegNav 演示截图" width="900" />
   <p><sub>部署完成后打开 <code>*.workers.dev</code> 即可体验完整界面</sub></p>
 </div>
 
@@ -247,11 +247,12 @@ PegNav/
 │   │   └── routes/          # data login categories links import reorder favicon
 │   └── shared/
 │       └── url.ts           # URL 规范化（前后端共用）
-├── schema.sql               # 参考 SQL（通常不必手工执行）
 ├── wrangler.toml            # Worker / D1 / Assets
 ├── vite.config.ts
 ├── package.json
-├── logo.svg                 # README 标识
+├── assets/
+│   ├── logo.svg             # README 标识
+│   └── demo.png             # 效果演示截图
 └── LICENSE
 ```
 

@@ -5,7 +5,7 @@ let ready = false;
 
 /**
  * 确保表结构存在；若分类表为空则写入示例数据。
- * 这样 GitHub 一键部署后无需在控制台手工执行 schema.sql。
+ * 部署后首次访问 /api 即可初始化，无需手工执行 SQL。
  */
 export async function ensureSchema(env: Env): Promise<void> {
   if (ready) return;
