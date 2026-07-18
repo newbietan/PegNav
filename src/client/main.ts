@@ -7,23 +7,25 @@ import {
   savePassword,
   updateAdminUI,
 } from './auth';
-import { doSearch, setEngine, type Engine } from './search';
-import { fillCatOptions, renderSections } from './render';
+import { doExternalSearch, getEngine, setEngine, type Engine } from './search';
+import { fillCatOptions, filterSections, renderSections } from './render';
 import {
   parseBookmarkHtml,
   summarizeImport,
   type ParseResult,
 } from './bookmark-import';
+import { confirmDialog, promptDialog, toast } from './ui';
 
 let data: Section[] = [];
 let editing: { itemId: number } | null = null;
 let isAdmin = false;
 let adminPw = loadStoredPassword();
 let pendingImport: ParseResult | null = null;
+let filterQuery = '';
 
 function notifyError(err: unknown) {
   const msg = err instanceof Error ? err.message : '操作失败';
-  alert(msg);
+  toast(msg, 'error');
   console.error(err);
 }
 
@@ -41,19 +43,55 @@ async function loadData() {
   paint();
 }
 
+function visibleData(): Section[] {
+  if (getEngine() !== 'local') return data;
+  return filterSections(data, filterQuery);
+}
+
+function updateFilterHint() {
+  const hint = document.getElementById('filterHint');
+  if (!hint) return;
+  if (getEngine() !== 'local' || !filterQuery.trim()) {
+    hint.hidden = true;
+    hint.textContent = '';
+    return;
+  }
+  const filtered = filterSections(data, filterQuery);
+  const n = filtered.reduce((s, c) => s + c.items.length, 0);
+  hint.hidden = false;
+  hint.textContent = `站内筛选「${filterQuery.trim()}」：${filtered.length} 个分类 / ${n} 个链接`;
+}
+
 function paint() {
   updateAdminUI(isAdmin);
-  renderSections(data, {
-    isAdmin,
-    onDeleteCategory: (catId) => {
-      void deleteCategory(catId);
+  updateFilterHint();
+  const view = visibleData();
+  const emptyMessage =
+    data.length === 0
+      ? isAdmin
+        ? '还没有分类，点右上角「新建分类」开始添加。'
+        : '还没有内容。'
+      : getEngine() === 'local' && filterQuery.trim()
+        ? '没有匹配的卡片，试试其它关键词。'
+        : undefined;
+  renderSections(
+    view,
+    {
+      isAdmin,
+      onDeleteCategory: (catId) => {
+        void deleteCategory(catId);
+      },
+      onRenameCategory: (catId) => {
+        void renameCategory(catId);
+      },
+      onEditCard: (catId, itemId, e) => editCard(catId, itemId, e),
+      onDeleteCard: (itemId, e) => {
+        void deleteCard(itemId, e);
+      },
+      onOpenAdd: (catId) => openModal(catId),
     },
-    onEditCard: (catId, itemId, e) => editCard(catId, itemId, e),
-    onDeleteCard: (itemId, e) => {
-      void deleteCard(itemId, e);
-    },
-    onOpenAdd: (catId) => openModal(catId),
-  });
+    { emptyMessage },
+  );
 }
 
 async function verifyStoredPassword() {
@@ -134,8 +172,10 @@ async function submitLogin(event?: Event) {
     isAdmin = true;
     closeLoginModal();
     paint();
-  } catch {
-    setLoginError('密码错误，请重试');
+    toast('已进入管理状态', 'success');
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : '密码错误';
+    setLoginError(msg);
   } finally {
     if (submit) {
       submit.disabled = false;
@@ -150,15 +190,43 @@ function doLogout() {
   clearPassword();
   isAdmin = false;
   paint();
+  toast('已退出管理');
 }
 
 async function addCategory() {
   if (!isAdmin) return;
-  const name = prompt('新分类名称');
-  if (!name?.trim()) return;
+  const name = await promptDialog({
+    title: '新建分类',
+    message: '输入分类名称，例如「开发工具」。',
+    placeholder: '分类名称',
+    confirmText: '创建',
+  });
+  if (!name) return;
   try {
-    await api.createCategory(name.trim(), adminPw);
+    await api.createCategory(name, adminPw);
     await loadData();
+    toast('分类已创建', 'success');
+  } catch (err) {
+    notifyError(err);
+  }
+}
+
+async function renameCategory(catId: number) {
+  if (!isAdmin) return;
+  const section = data.find((s) => s.id === catId);
+  if (!section) return;
+  const name = await promptDialog({
+    title: '重命名分类',
+    message: `当前名称：${section.cat}`,
+    placeholder: '新分类名称',
+    defaultValue: section.cat,
+    confirmText: '保存',
+  });
+  if (!name || name === section.cat) return;
+  try {
+    await api.renameCategory(catId, name, adminPw);
+    await loadData();
+    toast('分类已重命名', 'success');
   } catch (err) {
     notifyError(err);
   }
@@ -166,10 +234,20 @@ async function addCategory() {
 
 async function deleteCategory(catId: number) {
   if (!isAdmin) return;
-  if (!confirm('删除该分类会连同其中的标签一起删除，确定吗？')) return;
+  const section = data.find((s) => s.id === catId);
+  const ok = await confirmDialog({
+    title: '删除分类',
+    message: section
+      ? `确定删除「${section.cat}」？其中的 ${section.items.length} 个标签会一并删除。`
+      : '删除该分类会连同其中的标签一起删除，确定吗？',
+    confirmText: '删除',
+    danger: true,
+  });
+  if (!ok) return;
   try {
     await api.deleteCategory(catId, adminPw);
     await loadData();
+    toast('分类已删除', 'success');
   } catch (err) {
     notifyError(err);
   }
@@ -206,9 +284,17 @@ function editCard(catId: number, itemId: number, e: MouseEvent) {
 async function deleteCard(itemId: number, e: MouseEvent) {
   e.stopPropagation();
   if (!isAdmin) return;
+  const ok = await confirmDialog({
+    title: '删除标签',
+    message: '确定删除这个标签吗？',
+    confirmText: '删除',
+    danger: true,
+  });
+  if (!ok) return;
   try {
     await api.deleteLink(itemId, adminPw);
     await loadData();
+    toast('标签已删除', 'success');
   } catch (err) {
     notifyError(err);
   }
@@ -300,13 +386,13 @@ async function submitImport() {
   const mode = modeInput?.value === 'replace' ? 'replace' : 'merge';
 
   if (mode === 'replace') {
-    if (
-      !confirm(
-        '替换模式会删除当前全部导航数据，再写入导入内容。确定继续吗？',
-      )
-    ) {
-      return;
-    }
+    const ok = await confirmDialog({
+      title: '替换导入',
+      message: '替换模式会删除当前全部导航数据，再写入导入内容。确定继续吗？',
+      confirmText: '清空并导入',
+      danger: true,
+    });
+    if (!ok) return;
   }
 
   const submit = document.getElementById('importSubmit') as HTMLButtonElement | null;
@@ -329,8 +415,9 @@ async function submitImport() {
     );
     closeImportModal();
     await loadData();
-    alert(
-      `导入完成\n新增分类 ${res.categories_created} 个\n新增链接 ${res.links_created} 个\n跳过重复 ${res.links_skipped} 个`,
+    toast(
+      `导入完成：+${res.categories_created} 分类 / +${res.links_created} 链接（跳过 ${res.links_skipped}）`,
+      'success',
     );
   } catch (err) {
     setImportError(err instanceof Error ? err.message : '导入失败');
@@ -348,19 +435,44 @@ async function saveCard() {
   const t = fTitle.value.trim();
   const u = fUrl.value.trim();
   const catId = parseInt(fCat.value, 10);
-  if (!t || !u || Number.isNaN(catId)) return;
+  if (!t || !u || Number.isNaN(catId)) {
+    toast('请填写完整名称与网址', 'error');
+    return;
+  }
 
   const payload = { title: t, url: u, category_id: catId };
   try {
     if (editing) {
       await api.updateLink(editing.itemId, payload, adminPw);
+      toast('标签已更新', 'success');
     } else {
       await api.createLink(payload, adminPw);
+      toast('标签已添加', 'success');
     }
     closeModal();
     await loadData();
   } catch (err) {
     notifyError(err);
+  }
+}
+
+function onSearchInput() {
+  const input = document.getElementById('searchInput') as HTMLInputElement | null;
+  filterQuery = input?.value ?? '';
+  if (getEngine() === 'local') paint();
+}
+
+function onSearchGo() {
+  if (getEngine() === 'local') {
+    onSearchInput();
+    const n = visibleData().reduce((s, c) => s + c.items.length, 0);
+    if (filterQuery.trim()) {
+      toast(n ? `找到 ${n} 个链接` : '没有匹配结果', n ? 'info' : 'error');
+    }
+    return;
+  }
+  if (!doExternalSearch()) {
+    toast('请输入搜索关键词', 'error');
   }
 }
 
@@ -371,9 +483,10 @@ function bindUi() {
     void addCategory();
   });
   document.getElementById('importBtn')?.addEventListener('click', openImportModal);
-  document.getElementById('searchGo')?.addEventListener('click', doSearch);
+  document.getElementById('searchGo')?.addEventListener('click', onSearchGo);
+  document.getElementById('searchInput')?.addEventListener('input', onSearchInput);
   document.getElementById('searchInput')?.addEventListener('keydown', (e) => {
-    if ((e as KeyboardEvent).key === 'Enter') doSearch();
+    if ((e as KeyboardEvent).key === 'Enter') onSearchGo();
   });
   document.getElementById('modalCancel')?.addEventListener('click', closeModal);
   document.getElementById('modalSave')?.addEventListener('click', () => {
@@ -404,6 +517,16 @@ function bindUi() {
   });
 
   document.addEventListener('keydown', (e) => {
+    if (e.key === '/') {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
+        return;
+      }
+      e.preventDefault();
+      setEngine('local');
+      document.getElementById('searchInput')?.focus();
+      return;
+    }
     if (e.key !== 'Escape') return;
     if (document.getElementById('importMask')?.classList.contains('show')) {
       closeImportModal();
@@ -421,21 +544,27 @@ function bindUi() {
   document.querySelectorAll<HTMLButtonElement>('#engineSwitch button').forEach((btn) => {
     btn.addEventListener('click', () => {
       const engine = btn.dataset.engine as Engine | undefined;
-      if (engine) setEngine(engine);
+      if (!engine) return;
+      setEngine(engine);
+      paint();
     });
   });
 }
 
 async function init() {
   bindUi();
+  setEngine('local');
   try {
     await loadData();
   } catch (err) {
     notifyError(err);
     const root = document.getElementById('sections');
     if (root) {
-      root.innerHTML =
-        '<div class="empty-state">数据加载失败，请确认 Worker / D1 已启动。</div>';
+      root.innerHTML = '';
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.textContent = '数据加载失败，请确认 Worker / D1 已启动。';
+      root.appendChild(empty);
     }
   }
   await verifyStoredPassword();

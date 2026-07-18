@@ -10,11 +10,13 @@ export class ApiError extends Error {
 
 async function parseError(res: Response): Promise<string> {
   try {
-    const data = (await res.json()) as { error?: string };
+    const data = (await res.json()) as { error?: string; ok?: boolean };
     if (data?.error) return data.error;
   } catch {
     // ignore
   }
+  if (res.status === 429) return '请求过于频繁，请稍后再试';
+  if (res.status === 401) return '密码错误或未登录';
   return `请求失败 (${res.status})`;
 }
 
@@ -54,6 +56,14 @@ export function createCategory(name: string, password: string) {
   return request<{ id: number; name: string }>(
     '/api/categories',
     { method: 'POST', body: JSON.stringify({ name }) },
+    password,
+  );
+}
+
+export function renameCategory(id: number, name: string, password: string) {
+  return request<{ ok: boolean; id: number; name: string }>(
+    `/api/categories/${id}`,
+    { method: 'PUT', body: JSON.stringify({ name }) },
     password,
   );
 }

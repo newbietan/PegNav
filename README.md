@@ -3,10 +3,11 @@
 基于 **Cloudflare Worker + D1 + Hono + Vite/TypeScript** 的个人导航页。
 
 - 公开只读浏览分类与链接卡片
-- 管理员密码登录后可增删改分类/链接
+- 管理员密码登录后可增删改分类/链接（支持重命名分类）
+- 站内筛选 + 外站搜索（百度 / Bing / Google）
 - 支持一键导入 Chrome / Edge / Firefox 导出的 HTML 书签
-- 搜索栏可跳转百度 / Bing / Google
-- 钉板（pegboard）风格前端
+- 登录失败限流、安全响应头
+- 钉板（pegboard）风格前端，多端响应式
 
 **推荐：Cloudflare 控制台连接 GitHub 一键部署。**  
 D1 可在部署时**自动创建并绑定**；表结构与示例数据在**首次访问接口时自动初始化**。

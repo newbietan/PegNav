@@ -29,12 +29,14 @@
       <button class="active" data-engine="baidu" type="button">百度</button>
       <button data-engine="bing" type="button">Bing</button>
       <button data-engine="google" type="button">Google</button>
+      <button data-engine="local" type="button" title="筛选本站卡片">站内</button>
     </div>
     <div class="search-field">
       <input id="searchInput" placeholder="输入关键词搜索…" enterkeyhint="search" autocomplete="off">
       <button class="go" id="searchGo" type="button" aria-label="搜索">→</button>
     </div>
   </div>
+  <div class="filter-hint" id="filterHint" hidden></div>
 
   <div id="sections"></div>
 </div>
@@ -110,6 +112,35 @@
       <button class="btn ghost" id="importCancel" type="button">取消</button>
       <button class="btn primary" id="importSubmit" type="button" disabled>开始导入</button>
     </div>
+  </div>
+</div>
+
+<div class="mask" id="confirmMask">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <h3 id="confirmTitle">确认</h3>
+    <p class="modal-desc" id="confirmMessage"></p>
+    <div class="modal-actions">
+      <button class="btn ghost" id="confirmCancel" type="button">取消</button>
+      <button class="btn primary" id="confirmOk" type="button">确定</button>
+    </div>
+  </div>
+</div>
+
+<div class="mask" id="promptMask">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="promptTitle">
+    <h3 id="promptTitle">输入</h3>
+    <p class="modal-desc" id="promptMessage" hidden></p>
+    <form id="promptForm">
+      <div class="field">
+        <label for="promptInput" class="sr-only">内容</label>
+        <input id="promptInput" type="text" autocomplete="off" required>
+      </div>
+      <p class="field-error" id="promptError" hidden></p>
+      <div class="modal-actions">
+        <button class="btn ghost" id="promptCancel" type="button">取消</button>
+        <button class="btn primary" id="promptOk" type="submit">确定</button>
+      </div>
+    </form>
   </div>
 </div>
 

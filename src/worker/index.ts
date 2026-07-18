@@ -10,6 +10,33 @@ import importRoute from './routes/import';
 
 const app = new Hono<{ Bindings: Env }>();
 
+const SECURITY_HEADERS: Record<string, string> = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  // 允许 Google 字体与 favicon 外链；脚本仅同源
+  'Content-Security-Policy': [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data: https: blob:",
+    "connect-src 'self' https://www.google.com https://t1.gstatic.com https://icons.duckduckgo.com",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join('; '),
+};
+
+app.use('*', async (c, next) => {
+  await next();
+  for (const [k, v] of Object.entries(SECURITY_HEADERS)) {
+    c.res.headers.set(k, v);
+  }
+});
+
 // 图标代理不依赖 D1；其它 API 自动建表
 app.use('/api/*', async (c, next) => {
   if (c.req.path.startsWith('/api/favicon')) {

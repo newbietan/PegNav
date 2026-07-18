@@ -1,14 +1,5 @@
 import type { Section } from './types';
 
-export function escapeHtml(text: string): string {
-  return text
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
-}
-
 export function domainOf(u: string): string {
   try {
     return new URL(u.startsWith('http') ? u : `https://${u}`).hostname;
@@ -39,7 +30,6 @@ export function bindFavicon(img: HTMLImageElement, fallback: HTMLElement, url: s
   let index = 0;
   let done = false;
 
-  // 加载中先显示字母，成功再换图（避免空白）
   fallback.style.display = 'flex';
   img.style.display = 'none';
   img.alt = '';
@@ -92,21 +82,55 @@ export function bindFavicon(img: HTMLImageElement, fallback: HTMLElement, url: s
 export type RenderHandlers = {
   isAdmin: boolean;
   onDeleteCategory: (catId: number) => void;
+  onRenameCategory: (catId: number) => void;
   onEditCard: (catId: number, itemId: number, e: MouseEvent) => void;
   onDeleteCard: (itemId: number, e: MouseEvent) => void;
   onOpenAdd: (catId: number) => void;
 };
 
-export function renderSections(data: Section[], handlers: RenderHandlers) {
+/** 按关键词过滤分类与链接（标题 / URL / 域名 / 分类名） */
+export function filterSections(data: Section[], query: string): Section[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return data;
+
+  const out: Section[] = [];
+  for (const section of data) {
+    const catHit = section.cat.toLowerCase().includes(q);
+    const items = section.items.filter((item) => {
+      if (catHit) return true;
+      const title = item.t.toLowerCase();
+      const url = item.u.toLowerCase();
+      const host = domainOf(item.u).toLowerCase();
+      return title.includes(q) || url.includes(q) || host.includes(q);
+    });
+    if (items.length > 0 || catHit) {
+      out.push({
+        ...section,
+        items: catHit ? section.items : items,
+      });
+    }
+  }
+  return out;
+}
+
+export function renderSections(
+  data: Section[],
+  handlers: RenderHandlers,
+  options?: { emptyMessage?: string },
+) {
   const root = document.getElementById('sections');
   if (!root) return;
   root.innerHTML = '';
 
   if (data.length === 0) {
-    const tip = handlers.isAdmin
-      ? '点右上角"新建分类"开始添加。'
-      : '主人还没有整理好这里。';
-    root.innerHTML = `<div class="empty-state">还没有分类，${tip}</div>`;
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent =
+      options?.emptyMessage ||
+      (handlers.isAdmin
+        ? '还没有分类，点右上角「新建分类」开始添加。'
+        : '还没有内容。');
+    root.appendChild(empty);
     return;
   }
 
@@ -134,12 +158,25 @@ export function renderSections(data: Section[], handlers: RenderHandlers) {
     head.append(hook, titleEl, line, countEl);
 
     if (handlers.isAdmin) {
+      const actions = document.createElement('div');
+      actions.className = 'cat-actions';
+
+      const rename = document.createElement('button');
+      rename.className = 'cat-action';
+      rename.type = 'button';
+      rename.title = '重命名分类';
+      rename.textContent = '✎';
+      rename.addEventListener('click', () => handlers.onRenameCategory(section.id));
+
       const del = document.createElement('button');
       del.className = 'del-cat';
       del.type = 'button';
+      del.title = '删除分类';
       del.textContent = '✕';
       del.addEventListener('click', () => handlers.onDeleteCategory(section.id));
-      head.appendChild(del);
+
+      actions.append(rename, del);
+      head.appendChild(actions);
     }
     sec.appendChild(head);
 
