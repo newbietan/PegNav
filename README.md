@@ -30,7 +30,7 @@
 > 暖色钉板（pegboard）风格：分类分区、网站卡片、搜索栏与管理弹窗。公开只读；登录后可增删改、拖拽排序、导入导出。
 
 <div align="center">
-  <img src="./src/client/public/favicon.svg" alt="PegNav Icon" width="96" />
+  <img src="./demo.png" alt="PegNav 演示截图" width="900" />
   <p><sub>部署完成后打开 <code>*.workers.dev</code> 即可体验完整界面</sub></p>
 </div>
 
