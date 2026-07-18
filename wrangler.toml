@@ -18,3 +18,7 @@ binding = "ASSETS"
 not_found_handling = "single-page-application"
 # 保证 /api/* 优先走 Worker（Hono），而不是被静态资源吃掉
 run_worker_first = ["/api/*"]
+
+# 每 24 小时刷新过期 / 缺失的链接 favicon
+[triggers]
+crons = ["17 3 * * *"]

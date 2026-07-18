@@ -76,7 +76,7 @@
 <a id="features"></a>
 ## 核心特性
 
-- **分类 + 链接卡片**：钉板视觉、favicon（Google 优先 + Worker 代理兜底）。
+- **分类 + 链接卡片**：钉板视觉、favicon（D1 持久化 URL，Google + Worker 代理兜底，每日定时刷新）。
 - **管理员后台**：新建 / 重命名 / 删除分类；添加 / 编辑 / 删除链接。
 - **拖拽排序**：管理态拖分类把手或卡片，顺序自动保存。
 - **站内筛选**：搜索栏「站内」模式按标题 / URL / 域名 / 分类名过滤；`/` 快捷聚焦。
@@ -175,18 +175,20 @@ Cloudflare Worker
 
 | 方法 | 路径 | 鉴权 | 说明 |
 |------|------|------|------|
-| GET | `/api/data` | 否 | 全量分类与链接 |
+| GET | `/api/data` | 否 | 全量分类与链接（含 `favicon_url`） |
 | POST | `/api/login` | 否 | 校验密码，返回 `{ token, expires_at }` |
 | GET | `/api/login/me` | Bearer | 校验会话 |
 | POST | `/api/categories` | Bearer | 新建分类 |
 | PUT | `/api/categories/:id` | Bearer | 重命名分类 |
 | DELETE | `/api/categories/:id` | Bearer | 删除分类 |
-| POST | `/api/links` | Bearer | 新建链接 |
-| PUT | `/api/links/:id` | Bearer | 编辑链接 |
+| POST | `/api/links` | Bearer | 新建链接（异步解析 favicon 写入 D1） |
+| PUT | `/api/links/:id` | Bearer | 编辑链接（URL 变更时重解析 favicon） |
 | DELETE | `/api/links/:id` | Bearer | 删除链接 |
 | PUT | `/api/reorder` | Bearer | 批量更新顺序 |
 | POST | `/api/import` | Bearer | 批量导入（`merge` / `replace`） |
 | GET | `/api/favicon` | 否 | 图标代理（`?url=`） |
+
+定时任务：`wrangler.toml` 中 `crons = ["17 3 * * *"]` 每天刷新超过 24h 或缺失的 favicon。
 
 ```http
 Authorization: Bearer <session_token>

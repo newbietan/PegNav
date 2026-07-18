@@ -19,8 +19,21 @@ export function workerFaviconUrl(u: string): string {
   return `/api/favicon?url=${encodeURIComponent(full)}`;
 }
 
-export function bindFavicon(img: HTMLImageElement, fallback: HTMLElement, url: string) {
-  const sources = [googleFaviconUrl(url), workerFaviconUrl(url)];
+/**
+ * 绑定 favicon：优先使用库内持久化地址，失败再 Google → Worker 代理 → 字母。
+ */
+export function bindFavicon(
+  img: HTMLImageElement,
+  fallback: HTMLElement,
+  url: string,
+  storedFavicon?: string | null,
+) {
+  const sources: string[] = [];
+  if (storedFavicon?.trim()) {
+    sources.push(storedFavicon.trim());
+  }
+  sources.push(googleFaviconUrl(url), workerFaviconUrl(url));
+
   let index = 0;
   let done = false;
 
@@ -349,7 +362,7 @@ export function renderSections(
       fallback.className = 'favicon-fallback';
       fallback.textContent = item.t.slice(0, 1) || '?';
 
-      bindFavicon(img, fallback, item.u);
+      bindFavicon(img, fallback, item.u, item.favicon);
       favWrap.append(img, fallback);
       card.appendChild(favWrap);
 

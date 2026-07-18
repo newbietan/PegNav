@@ -25,10 +25,16 @@ export async function ensureSchema(env: Env): Promise<void> {
         title TEXT NOT NULL,
         url TEXT NOT NULL,
         sort_order INTEGER DEFAULT 0,
+        favicon_url TEXT,
+        favicon_host TEXT,
+        favicon_updated_at INTEGER,
         FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
       )
     `),
   ]);
+
+  // 兼容已有库：旧表无图标列时补齐
+  await migrateLinksFaviconColumns(env);
 
   const count = await env.DB.prepare(
     'SELECT COUNT(*) AS n FROM categories',
@@ -76,4 +82,33 @@ export async function ensureSchema(env: Env): Promise<void> {
   }
 
   ready = true;
+}
+
+async function migrateLinksFaviconColumns(env: Env): Promise<void> {
+  const info = await env.DB.prepare('PRAGMA table_info(links)').all<{
+    name: string;
+  }>();
+  const cols = new Set((info.results ?? []).map((r) => r.name));
+
+  const alters: D1PreparedStatement[] = [];
+  if (!cols.has('favicon_url')) {
+    alters.push(
+      env.DB.prepare('ALTER TABLE links ADD COLUMN favicon_url TEXT'),
+    );
+  }
+  if (!cols.has('favicon_host')) {
+    alters.push(
+      env.DB.prepare('ALTER TABLE links ADD COLUMN favicon_host TEXT'),
+    );
+  }
+  if (!cols.has('favicon_updated_at')) {
+    alters.push(
+      env.DB.prepare(
+        'ALTER TABLE links ADD COLUMN favicon_updated_at INTEGER',
+      ),
+    );
+  }
+  if (alters.length) {
+    await env.DB.batch(alters);
+  }
 }

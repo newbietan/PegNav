@@ -48,7 +48,12 @@ function mapData(res: Awaited<ReturnType<typeof api.getData>>): Section[] {
   return res.categories.map((c) => ({
     id: c.id,
     cat: c.name,
-    items: c.items.map((i) => ({ id: i.id, t: i.title, u: i.url })),
+    items: c.items.map((i) => ({
+      id: i.id,
+      t: i.title,
+      u: i.url,
+      favicon: i.favicon_url ?? null,
+    })),
   }));
 }
 

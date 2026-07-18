@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { Env } from '../env';
 import { authMiddleware } from '../auth';
 import { normalizeUrl as normalizeUrlShared } from '../../shared/url';
+import { scheduleFaviconRefresh } from '../favicon-store';
 
 const importRoute = new Hono<{ Bindings: Env }>();
 
@@ -98,6 +99,7 @@ importRoute.post('/', authMiddleware, async (c) => {
   let categoriesCreated = 0;
   let linksCreated = 0;
   let linksSkipped = 0;
+  const pendingFavicon: { url: string }[] = [];
 
   // 当前最大 sort_order
   const maxCatOrder =
@@ -143,6 +145,7 @@ importRoute.post('/', authMiddleware, async (c) => {
           'INSERT INTO links (category_id, title, url, sort_order) VALUES (?, ?, ?, ?)',
         ).bind(catId, link.title, link.url, nextLinkOrder++),
       );
+      pendingFavicon.push({ url: link.url });
       linksCreated++;
     }
 
@@ -150,6 +153,40 @@ importRoute.post('/', authMiddleware, async (c) => {
     const CHUNK = 50;
     for (let i = 0; i < statements.length; i += CHUNK) {
       await c.env.DB.batch(statements.slice(i, i + CHUNK));
+    }
+  }
+
+  // 导入后按 url 查回 id，异步解析图标（限量，其余交给 cron）
+  if (pendingFavicon.length) {
+    const urls = pendingFavicon.slice(0, 40).map((x) => x.url);
+    const placeholders = urls.map(() => '?').join(',');
+    try {
+      const rows = await c.env.DB.prepare(
+        `SELECT id, url FROM links WHERE url IN (${placeholders})`,
+      )
+        .bind(...urls)
+        .all<{ id: number; url: string }>();
+
+      // 同 host 只调度一次
+      const seenHost = new Set<string>();
+      let scheduled = 0;
+      for (const row of rows.results ?? []) {
+        if (scheduled >= 30) break;
+        let host = '';
+        try {
+          host = new URL(
+            row.url.startsWith('http') ? row.url : `https://${row.url}`,
+          ).hostname;
+        } catch {
+          host = row.url;
+        }
+        if (seenHost.has(host)) continue;
+        seenHost.add(host);
+        scheduleFaviconRefresh(c.executionCtx, c.env, row.id, row.url);
+        scheduled++;
+      }
+    } catch (err) {
+      console.error('import favicon schedule failed', err);
     }
   }
 

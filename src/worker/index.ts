@@ -8,6 +8,7 @@ import links from './routes/links';
 import favicon from './routes/favicon';
 import importRoute from './routes/import';
 import reorder from './routes/reorder';
+import { refreshStaleFavicons } from './favicon-store';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -74,4 +75,25 @@ app.notFound(async (c) => {
   return c.env.ASSETS.fetch(c.req.raw);
 });
 
-export default app;
+export default {
+  fetch: app.fetch,
+  async scheduled(
+    _event: ScheduledEvent,
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<void> {
+    ctx.waitUntil(
+      (async () => {
+        try {
+          await ensureSchema(env);
+          const result = await refreshStaleFavicons(env);
+          console.log(
+            `favicon cron: checked=${result.checked} updated=${result.updated}`,
+          );
+        } catch (err) {
+          console.error('favicon cron failed', err);
+        }
+      })(),
+    );
+  },
+};
