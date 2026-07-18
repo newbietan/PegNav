@@ -1,11 +1,13 @@
--- 分类表
+-- 参考用 SQL（部署时一般无需手工执行）。
+-- Worker 会在首次访问 /api 时自动 CREATE TABLE，并在空库时写入示例数据。
+-- 见 src/worker/schema.ts
+
 CREATE TABLE IF NOT EXISTS categories (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
   sort_order INTEGER DEFAULT 0
 );
 
--- 标签(网站)表
 CREATE TABLE IF NOT EXISTS links (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   category_id INTEGER NOT NULL,
@@ -15,7 +17,7 @@ CREATE TABLE IF NOT EXISTS links (
   FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
 );
 
--- 初始示例数据，可自行删改
+-- 以下 INSERT 仅作手工初始化参考；应用内会在分类数为 0 时自动写入等价数据
 INSERT INTO categories (name, sort_order) VALUES ('开发工具', 1);
 INSERT INTO categories (name, sort_order) VALUES ('设计参考', 2);
 INSERT INTO categories (name, sort_order) VALUES ('日常常用', 3);
