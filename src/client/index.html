@@ -45,6 +45,31 @@
   </div>
 </div>
 
+<div class="mask" id="loginMask">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+    <h3 id="loginTitle">管理员登录</h3>
+    <p class="modal-desc">输入管理密码后可添加、编辑与删除分类和链接。</p>
+    <form id="loginForm">
+      <div class="field">
+        <label for="loginPassword">管理密码</label>
+        <input
+          id="loginPassword"
+          type="password"
+          name="password"
+          autocomplete="current-password"
+          placeholder="请输入密码"
+          required
+        >
+      </div>
+      <p class="field-error" id="loginError" hidden></p>
+      <div class="modal-actions">
+        <button class="btn ghost" id="loginCancel" type="button">取消</button>
+        <button class="btn primary" id="loginSubmit" type="submit">登录</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script type="module" src="./main.ts"></script>
 </body>
 </html>

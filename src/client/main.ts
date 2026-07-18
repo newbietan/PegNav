@@ -63,17 +63,79 @@ async function verifyStoredPassword() {
   updateAdminUI(isAdmin);
 }
 
-async function doLogin() {
-  const pw = prompt('输入管理密码：');
-  if (!pw) return;
+function openLoginModal() {
+  const mask = document.getElementById('loginMask');
+  const input = document.getElementById('loginPassword') as HTMLInputElement | null;
+  const err = document.getElementById('loginError');
+  const submit = document.getElementById('loginSubmit') as HTMLButtonElement | null;
+  if (err) {
+    err.hidden = true;
+    err.textContent = '';
+  }
+  if (input) {
+    input.value = '';
+    input.classList.remove('invalid');
+    input.disabled = false;
+  }
+  if (submit) {
+    submit.disabled = false;
+    submit.textContent = '登录';
+  }
+  mask?.classList.add('show');
+  requestAnimationFrame(() => input?.focus());
+}
+
+function closeLoginModal() {
+  document.getElementById('loginMask')?.classList.remove('show');
+}
+
+function setLoginError(message: string) {
+  const err = document.getElementById('loginError');
+  const input = document.getElementById('loginPassword') as HTMLInputElement | null;
+  if (err) {
+    err.hidden = false;
+    err.textContent = message;
+  }
+  input?.classList.add('invalid');
+  input?.focus();
+  input?.select();
+}
+
+async function submitLogin(event?: Event) {
+  event?.preventDefault();
+  const input = document.getElementById('loginPassword') as HTMLInputElement | null;
+  const submit = document.getElementById('loginSubmit') as HTMLButtonElement | null;
+  const err = document.getElementById('loginError');
+  const pw = input?.value ?? '';
+  if (!pw.trim()) {
+    setLoginError('请输入管理密码');
+    return;
+  }
+  if (err) {
+    err.hidden = true;
+    err.textContent = '';
+  }
+  input?.classList.remove('invalid');
+  if (submit) {
+    submit.disabled = true;
+    submit.textContent = '登录中…';
+  }
+  if (input) input.disabled = true;
   try {
     await api.login(pw);
     adminPw = pw;
     savePassword(pw);
     isAdmin = true;
+    closeLoginModal();
     paint();
   } catch {
-    alert('密码错误');
+    setLoginError('密码错误，请重试');
+  } finally {
+    if (submit) {
+      submit.disabled = false;
+      submit.textContent = '登录';
+    }
+    if (input) input.disabled = false;
   }
 }
 
@@ -174,9 +236,7 @@ async function saveCard() {
 }
 
 function bindUi() {
-  document.getElementById('loginBtn')?.addEventListener('click', () => {
-    void doLogin();
-  });
+  document.getElementById('loginBtn')?.addEventListener('click', openLoginModal);
   document.getElementById('logoutBtn')?.addEventListener('click', doLogout);
   document.getElementById('addCatBtn')?.addEventListener('click', () => {
     void addCategory();
@@ -188,6 +248,27 @@ function bindUi() {
   document.getElementById('modalCancel')?.addEventListener('click', closeModal);
   document.getElementById('modalSave')?.addEventListener('click', () => {
     void saveCard();
+  });
+
+  document.getElementById('loginForm')?.addEventListener('submit', (e) => {
+    void submitLogin(e);
+  });
+  document.getElementById('loginCancel')?.addEventListener('click', closeLoginModal);
+  document.getElementById('loginMask')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeLoginModal();
+  });
+  document.getElementById('mask')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (document.getElementById('loginMask')?.classList.contains('show')) {
+      closeLoginModal();
+      return;
+    }
+    if (document.getElementById('mask')?.classList.contains('show')) {
+      closeModal();
+    }
   });
 
   document.querySelectorAll<HTMLButtonElement>('#engineSwitch button').forEach((btn) => {

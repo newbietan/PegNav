@@ -154,3 +154,25 @@
   .btn{padding:9px 16px; border-radius:6px; border:none; font-size:13px; cursor:pointer; font-family:'Inter';}
   .btn.ghost{background:transparent; color:var(--ink-soft);}
   .btn.primary{background:var(--teal); color:#fff; font-weight:600;}
+  .btn:disabled{opacity:.55; cursor:not-allowed;}
+  .modal-desc{
+    margin: -8px 0 16px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+  .field-error{
+    margin: 0 0 4px;
+    font-size: 12.5px;
+    color: #A83232;
+    min-height: 1.2em;
+  }
+  .field input:focus, .field select:focus{
+    outline: none;
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(31,92,86,.12);
+  }
+  .field input.invalid{
+    border-color: #A83232;
+    box-shadow: 0 0 0 3px rgba(168,50,50,.12);
+  }
