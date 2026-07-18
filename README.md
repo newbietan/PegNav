@@ -1,96 +1,127 @@
-# 个人导航页 · 部署说明
+# PegNav · 个人导航
 
-技术栈：Cloudflare Pages（托管前端 + Functions 接口）+ Cloudflare D1（数据库）
+基于 **Cloudflare Worker + D1 + Hono + Vite/TypeScript** 的个人导航页。
+
+- 公开只读浏览分类与链接卡片
+- 管理员密码登录后可增删改分类/链接
+- 搜索栏可跳转百度 / Bing / Google
+- 钉板（pegboard）风格前端
+
+## 技术栈
+
+| 层 | 技术 |
+|----|------|
+| 前端 | Vite + TypeScript（无 UI 框架） |
+| API | Hono（Cloudflare Worker） |
+| 数据 | Cloudflare D1 |
+| 静态资源 | Worker Assets |
 
 ## 目录结构
 
 ```
-nav-project/
-├── public/
-│   └── index.html        # 前端页面
-├── functions/
-│   ├── _lib/auth.js       # 鉴权工具函数
-│   └── api/
-│       ├── data.js        # GET  获取全部数据（公开）
-│       ├── login.js       # POST 校验管理密码
-│       ├── categories.js  # POST 新增分类（需管理密码）
-│       ├── categories/[id].js  # DELETE 删除分类
-│       ├── links.js       # POST 新增标签（需管理密码）
-│       └── links/[id].js  # PUT/DELETE 编辑、删除标签
-├── schema.sql             # 数据库表结构 + 初始示例数据
-└── wrangler.toml          # Cloudflare 项目配置
+PegNav/
+├── src/
+│   ├── client/          # 前端（Vite root）
+│   └── worker/          # Hono Worker + API 路由
+├── schema.sql           # D1 表结构与示例数据
+├── wrangler.toml        # Worker / D1 / Assets 配置
+├── vite.config.ts
+└── package.json
 ```
 
-## 部署步骤
+## 本地开发
 
-前提：安装好 Node.js，并全局安装 wrangler（Cloudflare 官方 CLI）：
+### 1. 安装依赖
 
 ```bash
-npm install -g wrangler
-wrangler login
+npm install
 ```
 
-### 1. 创建 D1 数据库
+### 2. 配置管理密码
 
 ```bash
-cd nav-project
-wrangler d1 create personal-nav-db
+cp .dev.vars.example .dev.vars
+# 编辑 .dev.vars，设置 ADMIN_PASSWORD
 ```
 
-命令执行后会输出一个 `database_id`，把它填进 `wrangler.toml` 里 `database_id = "..."` 的位置。
-
-### 2. 初始化数据库表结构
+### 3. 初始化本地 D1
 
 ```bash
-wrangler d1 execute personal-nav-db --remote --file=./schema.sql
+npm run db:local
 ```
 
-（本地调试可以先加 `--local` 而不是 `--remote` 跑一遍看看效果）
+### 4. 启动
 
-### 3. 设置管理密码（不会出现在代码里，安全存放在 Cloudflare）
+需要两个终端：
 
 ```bash
-wrangler pages secret put ADMIN_PASSWORD
+# 终端 1：Worker API（默认 http://127.0.0.1:8787）
+npm run dev:worker
+
+# 终端 2：前端（默认 http://127.0.0.1:5173，/api 代理到 Worker）
+npm run dev
 ```
 
-执行后会提示你输入密码，输入你想要的管理密码即可（这就是以后点"管理员登录"要输入的密码）。
+浏览器打开 Vite 地址即可。
 
-> 注意：这一步是给 **Pages 项目** 设置密钥，需要先完成一次部署创建项目（见下一步），如果提示项目不存在，先执行第 4 步部署一次，再回来设置密钥，然后重新部署一次让密钥生效。
+## 部署到 Cloudflare
 
-### 4. 部署到 Cloudflare Pages
+### 1. 登录并创建 D1
 
 ```bash
-wrangler pages deploy public --project-name=personal-nav
+npx wrangler login
+npx wrangler d1 create personal-nav-db
 ```
 
-首次部署会引导你创建 Pages 项目。部署成功后会给你一个 `https://personal-nav.pages.dev` 的地址，直接打开就能用。
+将输出的 `database_id` 填入 `wrangler.toml`。
 
-### 5. 绑定 D1 数据库到 Pages 项目
-
-Pages 项目和 Worker 的 D1 绑定配置略有不同，最简单的方式是去 Cloudflare Dashboard：
-
-1. 打开 Dashboard → Workers & Pages → 你的 `personal-nav` 项目 → **Settings → Functions**
-2. 找到 **D1 database bindings**，添加绑定：Variable name 填 `DB`，选择你刚创建的 `personal-nav-db`
-3. 保存后，回到 **Deployments**，触发一次重新部署（Retry deployment）让绑定生效
-
-### 6. 之后要更新代码
-
-修改完 `public/index.html` 或 `functions/` 里的文件后，重新执行：
+### 2. 初始化远程表结构
 
 ```bash
-wrangler pages deploy public --project-name=personal-nav
+npm run db:remote
 ```
+
+### 3. 设置管理密码（Worker Secret）
+
+```bash
+npx wrangler secret put ADMIN_PASSWORD
+```
+
+### 4. 构建并部署
+
+```bash
+npm run deploy
+```
+
+部署成功后会得到 `*.workers.dev` 地址（或你绑定的自定义域名）。
 
 ## 日常使用
 
-- 打开你的 `xxx.pages.dev` 地址，默认是**只读**状态，任何人都能看
-- 点右上角"管理员登录"，输入你设置的 `ADMIN_PASSWORD`，验证通过后本机浏览器会记住登录状态（存在 localStorage），之后就能添加/编辑/删除分类和标签
-- 换一台设备或清了浏览器数据，需要重新登录一次
-- 如果想换绑自己的域名，去 Pages 项目的 **Custom domains** 里添加即可
+- 打开站点默认为**只读**
+- 点「管理员登录」，输入 `ADMIN_PASSWORD`
+- 登录态保存在浏览器 `localStorage`（键名 `admin_pw`），换设备需重新登录
 
-## 后续可以扩展的方向
+## API
 
-- 给标签加拖拽排序
-- 加"收藏/常用置顶"
-- 加多用户（目前是单一管理密码，所有能登录的人权限一样）
-- 把 favicon 换成自己上传的图标，而不是依赖 Google 的抓取服务
+| 方法 | 路径 | 鉴权 | 说明 |
+|------|------|------|------|
+| GET | `/api/data` | 否 | 全量分类与链接 |
+| POST | `/api/login` | 否 | 校验密码 |
+| POST | `/api/categories` | Bearer | 新建分类 |
+| DELETE | `/api/categories/:id` | Bearer | 删除分类 |
+| POST | `/api/links` | Bearer | 新建链接 |
+| PUT | `/api/links/:id` | Bearer | 编辑链接 |
+| DELETE | `/api/links/:id` | Bearer | 删除链接 |
+
+鉴权头：`Authorization: Bearer <ADMIN_PASSWORD>`
+
+## 后续优化建议
+
+1. **安全**：登录改为短期 signed token，勿长期存明文密码；登录接口限流
+2. **体验**：站内卡片过滤、分类重命名、拖拽排序（`sort_order`）
+3. **工程**：GitHub Actions 自动部署、简单 smoke test
+4. **资源**：Favicon 多源兜底或 R2 自定义图标
+
+## License
+
+见 [LICENSE](./LICENSE)

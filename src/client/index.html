@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>工坊 · 个人导航</title>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="brand-plate">工坊 · Bench</div>
+      <div class="brand-sub">Personal / Nav Board</div>
+    </div>
+    <div class="header-actions">
+      <button class="add-cat-btn" id="addCatBtn" style="display:none" type="button">+ 新建分类</button>
+      <button class="auth-btn" id="loginBtn" type="button">管理员登录</button>
+      <button class="auth-btn" id="logoutBtn" style="display:none" type="button">退出管理</button>
+    </div>
+  </header>
+
+  <div class="search-bar">
+    <div class="engine-switch" id="engineSwitch">
+      <button class="active" data-engine="baidu" type="button">百度</button>
+      <button data-engine="bing" type="button">Bing</button>
+      <button data-engine="google" type="button">Google</button>
+    </div>
+    <input id="searchInput" placeholder="输入关键词搜索…">
+    <button class="go" id="searchGo" type="button">→</button>
+  </div>
+
+  <div id="sections"></div>
+</div>
+
+<div class="mask" id="mask">
+  <div class="modal">
+    <h3 id="modalTitle">添加标签</h3>
+    <div class="field"><label>名称</label><input id="fTitle" placeholder="例如 GitHub"></div>
+    <div class="field"><label>网址</label><input id="fUrl" placeholder="github.com 或 https://github.com"></div>
+    <div class="field"><label>所属分类</label><select id="fCat"></select></div>
+    <div class="modal-actions">
+      <button class="btn ghost" id="modalCancel" type="button">取消</button>
+      <button class="btn primary" id="modalSave" type="button">保存</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="./main.ts"></script>
+</body>
+</html>
