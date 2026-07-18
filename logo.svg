@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 120" role="img" aria-label="PegNav">
+  <defs>
+    <linearGradient id="plate" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2A726A"/>
+      <stop offset="100%" stop-color="#1F5C56"/>
+    </linearGradient>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F7F4EC"/>
+      <stop offset="100%" stop-color="#E8E1CF"/>
+    </linearGradient>
+    <pattern id="dots" width="14" height="14" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.2" fill="#DCD5C1"/>
+    </pattern>
+  </defs>
+  <rect width="480" height="120" rx="20" fill="#ECE7DC"/>
+  <rect width="480" height="120" rx="20" fill="url(#dots)" opacity="0.9"/>
+  <!-- icon plate -->
+  <g transform="translate(28,22)">
+    <rect width="76" height="76" rx="16" fill="url(#plate)"/>
+    <rect x="14" y="16" width="48" height="46" rx="7" fill="url(#paper)" stroke="#C9C1AC" stroke-width="1.4"/>
+    <circle cx="38" cy="21" r="5" fill="#ECE7DC" stroke="#1F5C56" stroke-width="1.6"/>
+    <circle cx="38" cy="21" r="1.8" fill="#2B2A28" opacity="0.55"/>
+    <circle cx="38" cy="14" r="3.8" fill="#A85C32"/>
+    <circle cx="36.8" cy="12.8" r="1.1" fill="#F0C9A8" opacity="0.9"/>
+    <path d="M26 36h28M26 46h18" stroke="#1F5C56" stroke-width="2.8" stroke-linecap="round" opacity="0.85"/>
+    <circle cx="52" cy="46" r="2.6" fill="#A85C32"/>
+  </g>
+  <!-- wordmark -->
+  <text x="128" y="58" font-family="Georgia, 'Zilla Slab', serif" font-size="36" font-weight="700" fill="#1F5C56">PegNav</text>
+  <text x="130" y="86" font-family="ui-monospace, Consolas, monospace" font-size="14" letter-spacing="2" fill="#726B5C">工坊 · 个人导航</text>
+</svg>
