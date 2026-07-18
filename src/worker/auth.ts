@@ -1,15 +1,11 @@
 import type { Context, Next } from 'hono';
 import type { Env } from './env';
-
-export function checkAuth(authHeader: string | undefined, env: Env): boolean {
-  if (!authHeader || !env.ADMIN_PASSWORD) return false;
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-  return token === env.ADMIN_PASSWORD;
-}
+import { authorize } from './token';
 
 export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) {
-  if (!checkAuth(c.req.header('Authorization'), c.env)) {
-    return c.json({ error: '密码错误或未登录' }, 401);
+  const ok = await authorize(c.req.header('Authorization'), c.env.ADMIN_PASSWORD);
+  if (!ok) {
+    return c.json({ error: '未登录或登录已过期' }, 401);
   }
   await next();
 }

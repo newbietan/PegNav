@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../env';
 import { authMiddleware } from '../auth';
+import { normalizeUrl as normalizeUrlShared } from '../../shared/url';
 
 const importRoute = new Hono<{ Bindings: Env }>();
 
@@ -16,17 +17,8 @@ const MAX_CATEGORIES = 200;
 const MAX_LINKS = 5000;
 
 function normalizeUrl(raw: string): string | null {
-  const t = raw.trim();
-  if (!t) return null;
-  if (/^(javascript|data|chrome|edge|about|place|file):/i.test(t)) return null;
-  try {
-    const withProto = /^https?:\/\//i.test(t) ? t : `https://${t}`;
-    const u = new URL(withProto);
-    if (!u.hostname) return null;
-    return u.href;
-  } catch {
-    return null;
-  }
+  const r = normalizeUrlShared(raw);
+  return r.ok ? r.url : null;
 }
 
 importRoute.post('/', authMiddleware, async (c) => {

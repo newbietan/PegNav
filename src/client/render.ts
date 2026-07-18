@@ -8,23 +8,17 @@ export function domainOf(u: string): string {
   }
 }
 
-/** Google 公共图标服务（优先） */
 export function googleFaviconUrl(u: string): string {
   const host = domainOf(u);
   return `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(host)}`;
 }
 
-/** 本站 Worker 代理（失败兜底，支持 data: URI 等） */
 export function workerFaviconUrl(u: string): string {
   const raw = u.trim();
   const full = raw.startsWith('http') ? raw : `https://${raw}`;
   return `/api/favicon?url=${encodeURIComponent(full)}`;
 }
 
-/**
- * 依次尝试：Google s2 → Worker 代理 → 首字母。
- * 用独立 Image 探测，避免 display:none / lazy 导致永不加载。
- */
 export function bindFavicon(img: HTMLImageElement, fallback: HTMLElement, url: string) {
   const sources = [googleFaviconUrl(url), workerFaviconUrl(url)];
   let index = 0;
@@ -81,14 +75,17 @@ export function bindFavicon(img: HTMLImageElement, fallback: HTMLElement, url: s
 
 export type RenderHandlers = {
   isAdmin: boolean;
+  /** 筛选中时禁用拖拽，避免顺序与数据不一致 */
+  canReorder: boolean;
   onDeleteCategory: (catId: number) => void;
   onRenameCategory: (catId: number) => void;
   onEditCard: (catId: number, itemId: number, e: MouseEvent) => void;
   onDeleteCard: (itemId: number, e: MouseEvent) => void;
   onOpenAdd: (catId: number) => void;
+  onReorderCategories: (orderedIds: number[]) => void;
+  onReorderLinks: (categoryId: number, orderedIds: number[]) => void;
 };
 
-/** 按关键词过滤分类与链接（标题 / URL / 域名 / 分类名） */
 export function filterSections(data: Section[], query: string): Section[] {
   const q = query.trim().toLowerCase();
   if (!q) return data;
@@ -111,6 +108,120 @@ export function filterSections(data: Section[], query: string): Section[] {
     }
   }
   return out;
+}
+
+export function renderLoading() {
+  const root = document.getElementById('sections');
+  if (!root) return;
+  root.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.className = 'loading-state';
+  wrap.setAttribute('aria-busy', 'true');
+  wrap.innerHTML = `
+    <div class="skeleton-block"></div>
+    <div class="skeleton-grid">
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+    </div>
+    <p class="loading-text">加载导航数据…</p>
+  `;
+  root.appendChild(wrap);
+}
+
+export function renderErrorState(message: string, onRetry: () => void) {
+  const root = document.getElementById('sections');
+  if (!root) return;
+  root.innerHTML = '';
+  const box = document.createElement('div');
+  box.className = 'empty-state error-state';
+  const p = document.createElement('p');
+  p.textContent = message;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn primary';
+  btn.textContent = '重试';
+  btn.addEventListener('click', onRetry);
+  box.append(p, btn);
+  root.appendChild(box);
+}
+
+function bindSectionDrag(
+  root: HTMLElement,
+  handlers: RenderHandlers,
+) {
+  if (!handlers.isAdmin || !handlers.canReorder) return;
+
+  let dragEl: HTMLElement | null = null;
+
+  root.querySelectorAll<HTMLElement>('.section[data-cat-id]').forEach((sec) => {
+    const handle = sec.querySelector('.drag-handle-cat') as HTMLElement | null;
+    if (!handle) return;
+    handle.draggable = true;
+    handle.addEventListener('dragstart', (e) => {
+      dragEl = sec;
+      sec.classList.add('dragging');
+      e.dataTransfer?.setData('text/plain', sec.dataset.catId || '');
+      if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+    });
+    handle.addEventListener('dragend', () => {
+      sec.classList.remove('dragging');
+      dragEl = null;
+      root.querySelectorAll('.section.drag-over').forEach((el) => el.classList.remove('drag-over'));
+      const ids = [...root.querySelectorAll<HTMLElement>('.section[data-cat-id]')].map((el) =>
+        Number(el.dataset.catId),
+      );
+      handlers.onReorderCategories(ids);
+    });
+    sec.addEventListener('dragover', (e) => {
+      if (!dragEl || dragEl === sec) return;
+      e.preventDefault();
+      sec.classList.add('drag-over');
+      const rect = sec.getBoundingClientRect();
+      const before = e.clientY < rect.top + rect.height / 2;
+      if (before) root.insertBefore(dragEl, sec);
+      else root.insertBefore(dragEl, sec.nextSibling);
+    });
+    sec.addEventListener('dragleave', () => sec.classList.remove('drag-over'));
+  });
+}
+
+function bindCardDrag(grid: HTMLElement, categoryId: number, handlers: RenderHandlers) {
+  if (!handlers.isAdmin || !handlers.canReorder) return;
+
+  let dragEl: HTMLElement | null = null;
+
+  grid.querySelectorAll<HTMLElement>('.tag-card[data-item-id]').forEach((card) => {
+    card.draggable = true;
+    card.addEventListener('dragstart', (e) => {
+      dragEl = card;
+      card.classList.add('dragging');
+      e.dataTransfer?.setData('text/plain', card.dataset.itemId || '');
+      if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+      e.stopPropagation();
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      dragEl = null;
+      grid.querySelectorAll('.tag-card.drag-over').forEach((el) => el.classList.remove('drag-over'));
+      const ids = [...grid.querySelectorAll<HTMLElement>('.tag-card[data-item-id]')].map((el) =>
+        Number(el.dataset.itemId),
+      );
+      handlers.onReorderLinks(categoryId, ids);
+    });
+    card.addEventListener('dragover', (e) => {
+      if (!dragEl || dragEl === card) return;
+      e.preventDefault();
+      e.stopPropagation();
+      card.classList.add('drag-over');
+      const rect = card.getBoundingClientRect();
+      const before = e.clientX < rect.left + rect.width / 2;
+      if (before) grid.insertBefore(dragEl, card);
+      else grid.insertBefore(dragEl, card.nextSibling);
+    });
+    card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+  });
 }
 
 export function renderSections(
@@ -137,9 +248,19 @@ export function renderSections(
   for (const section of data) {
     const sec = document.createElement('div');
     sec.className = 'section';
+    sec.dataset.catId = String(section.id);
 
     const head = document.createElement('div');
     head.className = 'section-head';
+
+    if (handlers.isAdmin && handlers.canReorder) {
+      const drag = document.createElement('button');
+      drag.type = 'button';
+      drag.className = 'drag-handle-cat';
+      drag.title = '拖动调整分类顺序';
+      drag.textContent = '⋮⋮';
+      head.appendChild(drag);
+    }
 
     const hook = document.createElement('div');
     hook.className = 'hook';
@@ -187,7 +308,9 @@ export function renderSections(
     for (const item of section.items) {
       const card = document.createElement('div');
       card.className = 'tag-card';
+      card.dataset.itemId = String(item.id);
       card.addEventListener('click', () => {
+        if (card.classList.contains('dragging')) return;
         window.open(`https://${domainOf(item.u)}`, '_blank');
       });
 
@@ -246,22 +369,22 @@ export function renderSections(
     if (handlers.isAdmin) {
       const addBtn = document.createElement('div');
       addBtn.className = 'add-card';
-
       const plus = document.createElement('div');
       plus.className = 'plus';
       plus.textContent = '+';
-
       const span = document.createElement('span');
       span.textContent = '添加标签';
-
       addBtn.append(plus, span);
       addBtn.addEventListener('click', () => handlers.onOpenAdd(section.id));
       grid.appendChild(addBtn);
     }
 
+    bindCardDrag(grid, section.id, handlers);
     sec.appendChild(grid);
     root.appendChild(sec);
   }
+
+  bindSectionDrag(root, handlers);
 }
 
 export function fillCatOptions(data: Section[], selectedId: number) {

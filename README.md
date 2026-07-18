@@ -3,11 +3,13 @@
 基于 **Cloudflare Worker + D1 + Hono + Vite/TypeScript** 的个人导航页。
 
 - 公开只读浏览分类与链接卡片
-- 管理员密码登录后可增删改分类/链接（支持重命名分类）
+- 管理员登录后可增删改分类/链接（重命名、拖拽排序）
+- 短期 HMAC Token 登录（不再长期存明文密码）
 - 站内筛选 + 外站搜索（百度 / Bing / Google）
-- 支持一键导入 Chrome / Edge / Firefox 导出的 HTML 书签
+- 导入 / 导出 HTML 书签与 JSON 备份
+- URL 自动规范化与校验
 - 登录失败限流、安全响应头
-- 钉板（pegboard）风格前端，多端响应式
+- 钉板风格前端，多端响应式，加载骨架与失败重试
 
 **推荐：Cloudflare 控制台连接 GitHub 一键部署。**  
 D1 可在部署时**自动创建并绑定**；表结构与示例数据在**首次访问接口时自动初始化**。
@@ -115,11 +117,14 @@ push 到 `main` → Cloudflare 自动构建部署。
 |------|------|------|------|
 | GET | `/api/data` | 否 | 全量分类与链接 |
 | POST | `/api/login` | 否 | 校验密码 |
+| GET | `/api/login/me` | Bearer | 校验会话 |
 | POST | `/api/categories` | Bearer | 新建分类 |
+| PUT | `/api/categories/:id` | Bearer | 重命名分类 |
 | DELETE | `/api/categories/:id` | Bearer | 删除分类 |
 | POST | `/api/links` | Bearer | 新建链接 |
 | PUT | `/api/links/:id` | Bearer | 编辑链接 |
 | DELETE | `/api/links/:id` | Bearer | 删除链接 |
+| PUT | `/api/reorder` | Bearer | 批量更新分类/链接顺序 |
 | POST | `/api/import` | Bearer | 批量导入书签（merge / replace） |
 
 鉴权：`Authorization: Bearer <ADMIN_PASSWORD>`

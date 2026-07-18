@@ -6,6 +6,7 @@ import {
   isRateLimited,
   recordLoginFailure,
 } from '../rate-limit';
+import { authorize, issueToken } from '../token';
 
 const login = new Hono<{ Bindings: Env }>();
 
@@ -29,7 +30,8 @@ login.post('/', async (c) => {
   const { password } = body ?? {};
   if (password && c.env.ADMIN_PASSWORD && password === c.env.ADMIN_PASSWORD) {
     clearLoginFailures(key);
-    return c.json({ ok: true });
+    const { token, expires_at } = await issueToken(c.env.ADMIN_PASSWORD);
+    return c.json({ ok: true, token, expires_at });
   }
 
   const { remaining, retryAfterSec } = recordLoginFailure(key);
@@ -43,6 +45,13 @@ login.post('/', async (c) => {
     { ok: false, error: `密码错误，还可尝试 ${remaining} 次` },
     401,
   );
+});
+
+/** 校验当前 Bearer（token 或过渡期明文密码）是否仍有效 */
+login.get('/me', async (c) => {
+  const ok = await authorize(c.req.header('Authorization'), c.env.ADMIN_PASSWORD);
+  if (!ok) return c.json({ ok: false }, 401);
+  return c.json({ ok: true });
 });
 
 export default login;

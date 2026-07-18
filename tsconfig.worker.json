@@ -11,5 +11,5 @@
     "isolatedModules": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/worker/**/*.ts"]
+  "include": ["src/worker/**/*.ts", "src/shared/**/*.ts"]
 }

@@ -286,6 +286,77 @@ header{
 .btn.danger{ background:#A83232; color:#fff; }
 .btn.danger:hover{ filter:brightness(1.05); }
 
+.drag-handle-cat{
+  border:none;
+  background:transparent;
+  color:var(--ink-soft);
+  cursor:grab;
+  font-size:12px;
+  letter-spacing:-2px;
+  padding:4px 2px;
+  border-radius:4px;
+  flex-shrink:0;
+  line-height:1;
+}
+.drag-handle-cat:active{ cursor:grabbing; }
+.drag-handle-cat:hover{ color:var(--teal); background:rgba(31,92,86,.08); }
+
+.section.dragging,
+.tag-card.dragging{
+  opacity:.55;
+}
+.section.drag-over{
+  outline: 2px dashed var(--teal);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+.tag-card.drag-over{
+  border-color: var(--teal);
+  box-shadow: 0 0 0 2px rgba(31,92,86,.2);
+}
+.tag-card[draggable="true"]{ cursor: grab; }
+.tag-card[draggable="true"]:active{ cursor: grabbing; }
+
+.loading-state{
+  padding: 24px 0 40px;
+}
+.skeleton-block{
+  height: 22px;
+  width: 40%;
+  max-width: 220px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--card-2) 25%, #efe9db 50%, var(--card-2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s ease-in-out infinite;
+  margin-bottom: 18px;
+}
+.skeleton-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(var(--card-min), 1fr));
+  gap:16px;
+}
+.skeleton-card{
+  height: 112px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--card) 25%, #f3efe4 50%, var(--card) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s ease-in-out infinite;
+  border: 1px solid var(--line);
+}
+.loading-text{
+  text-align:center;
+  color:var(--ink-soft);
+  font-size:13px;
+  margin: 20px 0 0;
+}
+.error-state .btn{
+  margin-top: 14px;
+}
+@keyframes shimmer{
+  0%{ background-position: 100% 0; }
+  100%{ background-position: -100% 0; }
+}
+
 .grid{
   display:grid;
   grid-template-columns:repeat(auto-fill, minmax(var(--card-min), 1fr));

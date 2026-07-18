@@ -16,21 +16,21 @@ async function parseError(res: Response): Promise<string> {
     // ignore
   }
   if (res.status === 429) return '请求过于频繁，请稍后再试';
-  if (res.status === 401) return '密码错误或未登录';
+  if (res.status === 401) return '未登录或登录已过期';
   return `请求失败 (${res.status})`;
 }
 
 async function request<T>(
   path: string,
   options: RequestInit = {},
-  password?: string,
+  token?: string,
 ): Promise<T> {
   const headers = new Headers(options.headers);
   if (!headers.has('Content-Type') && options.body) {
     headers.set('Content-Type', 'application/json');
   }
-  if (password) {
-    headers.set('Authorization', `Bearer ${password}`);
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
   }
 
   const res = await fetch(path, { ...options, headers });
@@ -46,64 +46,68 @@ export function getData() {
 }
 
 export function login(password: string) {
-  return request<{ ok: boolean }>('/api/login', {
+  return request<{ ok: boolean; token: string; expires_at: number }>('/api/login', {
     method: 'POST',
     body: JSON.stringify({ password }),
   });
 }
 
-export function createCategory(name: string, password: string) {
+export function verifySession(token: string) {
+  return request<{ ok: boolean }>('/api/login/me', { method: 'GET' }, token);
+}
+
+export function createCategory(name: string, token: string) {
   return request<{ id: number; name: string }>(
     '/api/categories',
     { method: 'POST', body: JSON.stringify({ name }) },
-    password,
+    token,
   );
 }
 
-export function renameCategory(id: number, name: string, password: string) {
+export function renameCategory(id: number, name: string, token: string) {
   return request<{ ok: boolean; id: number; name: string }>(
     `/api/categories/${id}`,
     { method: 'PUT', body: JSON.stringify({ name }) },
-    password,
+    token,
   );
 }
 
-export function deleteCategory(id: number, password: string) {
+export function deleteCategory(id: number, token: string) {
   return request<{ ok: boolean }>(
     `/api/categories/${id}`,
     { method: 'DELETE' },
-    password,
+    token,
   );
 }
 
 export function createLink(
   payload: { category_id: number; title: string; url: string },
-  password: string,
+  token: string,
 ) {
   return request(
     '/api/links',
     { method: 'POST', body: JSON.stringify(payload) },
-    password,
+    token,
   );
 }
 
 export function updateLink(
   id: number,
   payload: { category_id: number; title: string; url: string },
-  password: string,
+  token: string,
 ) {
   return request(
     `/api/links/${id}`,
     { method: 'PUT', body: JSON.stringify(payload) },
-    password,
+    token,
   );
 }
 
-export function deleteLink(id: number, password: string) {
+export function deleteLink(id: number, token: string) {
   return request<{ ok: boolean }>(
     `/api/links/${id}`,
     { method: 'DELETE' },
-    password,
+    token,
   );
 }
 
@@ -120,10 +124,23 @@ export type ImportResult = {
   links_skipped: number;
 };
 
-export function importBookmarks(payload: ImportPayload, password: string) {
+export function importBookmarks(payload: ImportPayload, token: string) {
   return request<ImportResult>(
     '/api/import',
     { method: 'POST', body: JSON.stringify(payload) },
-    password,
+    token,
+  );
+}
+
+export type ReorderPayload = {
+  categories?: number[];
+  links?: { category_id: number; ids: number[] }[];
+};
+
+export function reorder(payload: ReorderPayload, token: string) {
+  return request<{ ok: boolean }>(
+    '/api/reorder',
+    { method: 'PUT', body: JSON.stringify(payload) },
+    token,
   );
 }
