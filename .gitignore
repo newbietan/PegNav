@@ -1,0 +1,26 @@
+# Cloudflare / Wrangler
+.wrangler/
+.dev.vars
+.mf/
+
+# 环境与密钥（切勿提交）
+.env
+.env.*
+!.env.example
+
+# 依赖与构建产物
+node_modules/
+dist/
+.cache/
+
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/
+*.swp
+*~
+
+# 本地工具目录
+.mimocode/

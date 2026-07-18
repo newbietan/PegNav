@@ -1,0 +1,8 @@
+name = "personal-nav"
+compatibility_date = "2024-09-01"
+pages_build_output_dir = "public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "personal-nav-db"
+database_id = "在这里填入你创建数据库后拿到的 database_id"
